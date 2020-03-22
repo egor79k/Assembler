@@ -9,53 +9,54 @@
 global printf
 
 section		.data
-
-Format_str 	db "Hello %d world!", 10, 0
-Arg_1		dd 1854390267
+;:::Consts:::
+Hex 		db "0123456789ABCDEF"
+Stk_offset	equ 8
+ASCII_offset 	equ 48
+tmp 		db '0'
 
 ;:::Errors:::
-Error_1		db 10, "Invalid specificator"
+Error_1		db 10, "Error: Invalid specificator!", 10
 Er1_len		equ $ - Error_1
+
 
 
 section		.text
 
-printf:
-		push Arg_1
-		push Format_str
-		pop rbp
-		;mov rbp, Format_str
-
-Repeat:
-		cmp byte [rbp], '%'
+printf:		
+		mov rbp, rsp 			;Mov stack pointer to RBP
+		mov rbx, [rbp + Stk_offset]	;Take firs arg from stack
+		add rbp, Stk_offset * 2		;Mov stack pointe to next arg
+.Repeat:	
+		cmp byte [rbx], '%'		;Check for marker
 		je Marker
 
+		mov rsi, rbx
 		call Putchar
-Handler:
-		inc rbp
-		cmp byte [rbp], 0
-		jne Repeat
-
-		mov rax, 0x3C
-		xor rdi, rdi
-		syscall
+..@Handler:
+		inc rbx
+		cmp byte [rbx], 0		;Check for EOL
+		jne .Repeat
 
 		ret
 
 
+;==================================================
+; Switch types of markers
+;==================================================
 Marker:
-		inc rbp
-		cmp byte [rbp], 'd'
+		inc rbx
+		cmp byte [rbx], 'd'
 		je Decimal
-;		cmp byte [rbp], 'c'
-;		je Char
-;		cmp byte [rbp], 's'
-;		je String
-;		cmp byte [rbp], 'x'
-;		je Hexademical
-;		cmp byte [rbp], 'o'
+		cmp byte [rbx], 'c'
+		je Char
+		cmp byte [rbx], 's'
+		je String
+		cmp byte [rbx], 'x'
+		je Hexadecimal
+;		cmp byte [rbx], 'o'
 ;		je Octal
-;		cmp byte [rbp], '%'
+;		cmp byte [rbx], '%'
 ;		je Percent
 
 		mov rsi, Error_1
@@ -64,16 +65,105 @@ Marker:
 
 		mov rax, 0x3C
 		mov rdi, 1
+		syscall 			;Exit (1)
+
+
+;==================================================
+; Print decimal number
+;==================================================
+Decimal:	
+		mov rcx, [rbp]
+		mov eax, [rcx]
+		add rbp, Stk_offset
+		xor rcx, rcx
+		xor rdx, rdx
+.Repeat:	
+		mov esi, 10
+		xor edx, edx
+		div esi
+		add edx, ASCII_offset
+		push rdx
+		inc rcx
+		cmp eax, 0
+		jne .Repeat
+
+		mov rax, 0x01
+		mov rdi, 1
+		mov rdx, 1
+.Cycle:
+		mov rsi, rsp
+		push rcx
 		syscall
+		pop rcx
+		pop rsi
+		loop .Cycle
+
+		jmp ..@Handler
 
 
+;==================================================
+; Print decimal number
+;==================================================
+Char:
+		mov rsi, [rbp]
+		add rbp, Stk_offset
+		call Putchar
+		jmp ..@Handler
 
 
-Decimal:
-		jmp Handler
+;==================================================
+; Print string from arg
+;==================================================
+String:
+		mov rsi, [rbp]
+		add rbp, Stk_offset
+		xor rdx, rdx
+		dec rdx
+.Repeat:
+		inc rdx
+		cmp byte [rsi + rdx], 0
+		jne .Repeat
+
+		call Print_str
+		jmp ..@Handler
 
 
+;==================================================
+; Print Hexadecimal number
+;==================================================
+Hexadecimal:
+		mov rcx, [rbp]
+		mov eax, [rcx]
+		add rbp, Stk_offset
+		xor rcx, rcx
+.Repeat:	
+		mov esi, 0x10
+		xor edx, edx
+		div esi
+		mov rsi, [Hex + edx]
+		push rsi
+		inc rcx
+		cmp eax, 0
+		jne .Repeat
 
+		mov rax, 0x01
+		mov rdi, 1
+		mov rdx, 1
+.Cycle:
+		mov rsi, rsp
+		push rcx
+		syscall
+		pop rcx
+		pop rsi
+		loop .Cycle
+
+		jmp ..@Handler
+;==================================================
+; Print string in std output
+; Entry: RSI - String addr
+;	 RDX - Symbs num
+; Destr: RAX RCX RDI
+;==================================================
 Print_str:
 		mov rax, 0x01
 		mov rdi, 1
@@ -81,11 +171,14 @@ Print_str:
 		ret
 
 
-
+;==================================================
+; Print char in std output
+; Entry: RSI - Char addr
+; Destr: RAX RCX RDX RSI RDI
+;==================================================
 Putchar:
 		mov rax, 0x01
 		mov rdi, 1
-		mov rsi, rbp
 		mov rdx, 1
 		syscall
 		ret
