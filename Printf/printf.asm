@@ -62,8 +62,8 @@ Marker:
 		je String
 		cmp byte [rbx], 'x'
 		je Hexadecimal
-		;cmp byte [rbx], 'o'
-		;je Octal
+		cmp byte [rbx], 'o'
+		je Octal
 ;		cmp byte [rbx], '%'
 ;		je Percent
 
@@ -83,37 +83,25 @@ Decimal:
 		mov rdi, Decim
 		jmp Number
 
-		mov rcx, [rbp]
-		mov eax, [rcx]
-		add rbp, Stk_offset
-		xor rcx, rcx
-		xor rdx, rdx
-.Repeat:	
-		mov esi, 10
-		xor edx, edx
-		div esi
-		add edx, ASCII_offset
-		push rdx
-		inc rcx
-		cmp eax, 0
-		jne .Repeat
 
-		mov rax, 0x01
-		mov rdi, 1
-		mov rdx, 1
-.Cycle:
-		mov rsi, rsp
-		push rcx
-		syscall
-		pop rcx
-		pop rsi
-		loop .Cycle
-
-		jmp ..@Handler
+;==================================================
+; Print hexadecimal number
+;==================================================
+Hexadecimal:
+		mov rdi, Hex
+		jmp Number
 
 
 ;==================================================
-; Print decimal number
+; Print octal number
+;==================================================
+Octal:
+		mov rdi, Oct
+		jmp Number
+
+
+;==================================================
+; Print char
 ;==================================================
 Char:
 		mov rsi, [rbp]
@@ -140,46 +128,17 @@ String:
 
 
 ;==================================================
-; Print Hexadecimal number
+; Print percent
 ;==================================================
-Hexadecimal:
-		mov rdi, Hex
-		jmp Number
-
-		mov rcx, [rbp]
-		mov eax, [rcx]
-		add rbp, Stk_offset
-		mov rcx, 2
-.Repeat:	
-		mov esi, 0x10
-		xor edx, edx
-		div esi
-		mov rsi, [Hex + edx + 4]
-		push rsi
-		inc rcx
-		cmp eax, 0
-		jne .Repeat
-
-		mov rsi, 'x'
-		push rsi
-		mov rsi, '0'
-		push rsi
-		mov rax, 0x01
-		mov rdi, 1
-		mov rdx, 1
-.Cycle:
-		mov rsi, rsp
-		push rcx
-		syscall
-		pop rcx
-		pop rsi
-		loop .Cycle
-
+Percent:
+		mov rsi, prcnt
 		jmp ..@Handler
 
 
 ;==================================================
-; Print Hexadecimal number
+; Print number in different number systems (NS)
+; Entry: RDI - NS buffer in format: dd <radix> db "1...<radix-1>"
+; Destr:
 ;==================================================
 Number:
 		mov rcx, [rbp]
