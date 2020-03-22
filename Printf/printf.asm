@@ -22,6 +22,7 @@ Hex		dd 0x10
 Stk_offset	equ 8
 ASCII_offset 	equ 48
 tmp 		db '0'
+prcnt 		db '%'
 
 ;:::Errors:::
 Error_1		db 10, "Error: Invalid specificator!", 10
@@ -132,6 +133,7 @@ String:
 ;==================================================
 Percent:
 		mov rsi, prcnt
+		call Putchar
 		jmp ..@Handler
 
 
