@@ -21,7 +21,6 @@ Hex		dd 0x10
 		
 Stk_offset	equ 8
 ASCII_offset 	equ 48
-tmp 		db '0'
 prcnt 		db '%'
 
 ;:::Errors:::
