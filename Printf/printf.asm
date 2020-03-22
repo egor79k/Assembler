@@ -10,7 +10,15 @@ global printf
 
 section		.data
 ;:::Consts:::
-Hex 		db "0123456789ABCDEF"
+Oct 		dd 8
+		db "01234567"
+
+Decim 		dd 10
+		db "0123456789"
+
+Hex		dd 0x10
+		db "0123456789ABCDEF"
+		
 Stk_offset	equ 8
 ASCII_offset 	equ 48
 tmp 		db '0'
@@ -54,8 +62,8 @@ Marker:
 		je String
 		cmp byte [rbx], 'x'
 		je Hexadecimal
-;		cmp byte [rbx], 'o'
-;		je Octal
+		;cmp byte [rbx], 'o'
+		;je Octal
 ;		cmp byte [rbx], '%'
 ;		je Percent
 
@@ -72,6 +80,9 @@ Marker:
 ; Print decimal number
 ;==================================================
 Decimal:	
+		mov rdi, Decim
+		jmp Number
+
 		mov rcx, [rbp]
 		mov eax, [rcx]
 		add rbp, Stk_offset
@@ -132,15 +143,54 @@ String:
 ; Print Hexadecimal number
 ;==================================================
 Hexadecimal:
+		mov rdi, Hex
+		jmp Number
+
+		mov rcx, [rbp]
+		mov eax, [rcx]
+		add rbp, Stk_offset
+		mov rcx, 2
+.Repeat:	
+		mov esi, 0x10
+		xor edx, edx
+		div esi
+		mov rsi, [Hex + edx + 4]
+		push rsi
+		inc rcx
+		cmp eax, 0
+		jne .Repeat
+
+		mov rsi, 'x'
+		push rsi
+		mov rsi, '0'
+		push rsi
+		mov rax, 0x01
+		mov rdi, 1
+		mov rdx, 1
+.Cycle:
+		mov rsi, rsp
+		push rcx
+		syscall
+		pop rcx
+		pop rsi
+		loop .Cycle
+
+		jmp ..@Handler
+
+
+;==================================================
+; Print Hexadecimal number
+;==================================================
+Number:
 		mov rcx, [rbp]
 		mov eax, [rcx]
 		add rbp, Stk_offset
 		xor rcx, rcx
 .Repeat:	
-		mov esi, 0x10
-		xor edx, edx
+		mov esi, dword [rdi]
+		xor rdx, rdx
 		div esi
-		mov rsi, [Hex + edx]
+		mov rsi, [rdi + rdx + 4]
 		push rsi
 		inc rcx
 		cmp eax, 0
@@ -158,6 +208,8 @@ Hexadecimal:
 		loop .Cycle
 
 		jmp ..@Handler
+
+
 ;==================================================
 ; Print string in std output
 ; Entry: RSI - String addr
