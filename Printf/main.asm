@@ -25,6 +25,11 @@ Arg_3_4		dd 1024
 Arg_3_5		dd 0xA51BB
 Arg_3_6		dd 256
 
+Format_str_4 	db "%o%% or %o%% that it's last test.%c", 0
+Arg_4_1		dd 100q
+Arg_4_2		dd 50
+Arg_4_3		dd 10	;'/n'
+
 
 section 	.text
 _start:		
@@ -57,6 +62,12 @@ _start:
 		push Arg_3_2
 		push Arg_3_1
 		push Format_str_3
+		call printf
+
+		push Arg_4_3
+		push Arg_4_2
+		push Arg_4_1
+		push Format_str_4
 		call printf
 
 		mov rax, 0x3C

@@ -65,8 +65,8 @@ Marker:
 		je Hexadecimal
 		cmp byte [rbx], 'o'
 		je Octal
-;		cmp byte [rbx], '%'
-;		je Percent
+		cmp byte [rbx], '%'
+		je Percent
 
 		mov rsi, Error_1
 		mov rdx, Er1_len
