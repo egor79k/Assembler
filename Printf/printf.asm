@@ -56,10 +56,7 @@ printf:
 		inc rbx
 		jmp .Repeat
 .End_str:
-		mov rsi, r8			;Print last piece of format string before '/0'
-		mov rdx, rbx
-		sub rdx, r8
-		call Print_str
+		call Print_fromto		;Print last piece of format string before '/0'
 
 		pop rbp
 		mov rax, 0
@@ -70,13 +67,10 @@ printf:
 ; Switch types of markers
 ;==================================================
 Marker:
-		mov rsi, r8
-		mov rdx, rbx
-		sub rdx, r8
-		call Print_str
-
+		call Print_fromto		;Print last piece of format string before '%'
 		inc rbx
-		cmp byte [rbx], 'd'
+
+		cmp byte [rbx], 'd'		;Determine type of marker
 		je Decimal
 		cmp byte [rbx], 'c'
 		je Char
@@ -91,7 +85,7 @@ Marker:
 		cmp byte [rbx], '%'
 		je Percent
 
-		mov rsi, Error_1
+		mov rsi, Error_1		;Undefined marker id
 		mov rdx, Er1_len
 		call Print_str
 
@@ -146,16 +140,16 @@ Char:
 ; Print string from arg
 ;==================================================
 String:
-		mov rsi, [rbp]
+		mov rsi, [rbp]			;Get string addr from stack
 		add rbp, Stk_offset
 		xor rdx, rdx
 		dec rdx
 .Repeat:
 		inc rdx
-		cmp byte [rsi + rdx], 0
+		cmp byte [rsi + rdx], 0		;Find string end
 		jne .Repeat
 
-		call Print_str
+		call Print_str			;Print string
 		jmp ..@Handler
 
 
@@ -164,29 +158,29 @@ String:
 ;==================================================
 Percent:
 		mov rsi, prcnt
-		call Putchar
+		call Putchar			;Print '%'
 		jmp ..@Handler
 
 
 ;==================================================
-; Print number in different number systems (NS)
+; Print 4 byte number in different number systems
 ; Entry: RDI - NS buffer in format: dd <radix> db "1...<radix-1>"
-; Destr:
+; Destr: RAX RCX RDX RSI
 ;==================================================
 Number:
-		mov eax, [rbp]
+		mov eax, [rbp]			;Put number into EAX
 		add rbp, Stk_offset
 		xor rcx, rcx
 .Repeat:	
 		xor rdx, rdx
-		div dword [rdi]
+		div dword [rdi]			;Get the smallest digit in EDX
 		mov sil, [rdi + rdx + 4]
-		mov byte [num + rcx + 32], sil
-		dec rcx
+		mov byte [num + rcx + 32], sil	;Write number as a string in reversed buffer
+		dec rcx				;Reversed buffer's counter
 		cmp eax, 0
 		jne .Repeat
 
-		neg rcx
+		neg rcx				; Printing buffer in usual oreder (left->right)
 		mov rdx, rcx
 		mov rsi, num + 33
 		sub rsi, rcx
@@ -204,6 +198,20 @@ Print_str:
 		mov rax, 0x01
 		mov rdi, 1
 		syscall
+		ret
+
+
+;==================================================
+; Print string in std output, located between R8 and RBX pointers
+; Entry: R8  - String start
+;	 RBX - String end
+; Destr: RAX RCX RDI
+;==================================================
+Print_fromto:
+		mov rsi, r8
+		mov rdx, rbx
+		sub rdx, r8
+		call Print_str
 		ret
 
 
