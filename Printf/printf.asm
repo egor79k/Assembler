@@ -9,7 +9,14 @@
 global printf
 
 section		.data
-;:::Consts:::
+
+prcnt 		db '%'
+Stk_offset	equ 8
+
+;:::Number systems buffers:::
+Bin 		dd 2
+		db "01"
+
 Oct 		dd 8
 		db "01234567"
 
@@ -19,40 +26,55 @@ Decim 		dd 10
 Hex		dd 0x10
 		db "0123456789ABCDEF"
 		
-Stk_offset	equ 8
-ASCII_offset 	equ 48
-prcnt 		db '%'
-
 ;:::Errors:::
 Error_1		db 10, "Error: Invalid specificator!", 10
 Er1_len		equ $ - Error_1
 
 
 
+section .bss
+num 		resb 32				;Buffer for %d parser
+
+
+
 section		.text
 
 printf:		
+		push rbp			;Saving old RBP
 		mov rbp, rsp 			;Mov stack pointer to RBP
-		mov rbx, [rbp + Stk_offset]	;Take firs arg from stack
-		add rbp, Stk_offset * 2		;Mov stack pointe to next arg
+		mov rbx, [rbp + 2 * Stk_offset]	;Take first arg from stack
+		add rbp, Stk_offset * 3		;Mov stack pointer to next arg
+		dec rbx
+..@Handler:					;Return-point for markers parser
+		inc rbx				;Skip marker id (letter after %)
+		mov r8, rbx
 .Repeat:	
 		cmp byte [rbx], '%'		;Check for marker
 		je Marker
-
-		mov rsi, rbx
-		call Putchar
-..@Handler:
-		inc rbx
 		cmp byte [rbx], 0		;Check for EOL
-		jne .Repeat
+		je .End_str
+		inc rbx
+		jmp .Repeat
+.End_str:
+		mov rsi, r8			;Print last piece of format string before '/0'
+		mov rdx, rbx
+		sub rdx, r8
+		call Print_str
 
-		ret
+		pop rbp
+		mov rax, 0
+		ret 				;return 0;
 
 
 ;==================================================
 ; Switch types of markers
 ;==================================================
 Marker:
+		mov rsi, r8
+		mov rdx, rbx
+		sub rdx, r8
+		call Print_str
+
 		inc rbx
 		cmp byte [rbx], 'd'
 		je Decimal
@@ -64,6 +86,8 @@ Marker:
 		je Hexadecimal
 		cmp byte [rbx], 'o'
 		je Octal
+		cmp byte [rbx], 'b'
+		je Binary
 		cmp byte [rbx], '%'
 		je Percent
 
@@ -71,9 +95,9 @@ Marker:
 		mov rdx, Er1_len
 		call Print_str
 
-		mov rax, 0x3C
-		mov rdi, 1
-		syscall 			;Exit (1)
+		pop rbp
+		mov rax, 1
+		ret 				;return 1;
 
 
 ;==================================================
@@ -101,10 +125,18 @@ Octal:
 
 
 ;==================================================
+; Print binary number
+;==================================================
+Binary:
+		mov rdi, Bin
+		jmp Number
+
+
+;==================================================
 ; Print char
 ;==================================================
 Char:
-		mov rsi, [rbp]
+		mov rsi, rbp
 		add rbp, Stk_offset
 		call Putchar
 		jmp ..@Handler
@@ -142,31 +174,23 @@ Percent:
 ; Destr:
 ;==================================================
 Number:
-		mov rcx, [rbp]
-		mov eax, [rcx]
+		mov eax, [rbp]
 		add rbp, Stk_offset
 		xor rcx, rcx
 .Repeat:	
-		mov esi, dword [rdi]
 		xor rdx, rdx
-		div esi
-		mov rsi, [rdi + rdx + 4]
-		push rsi
-		inc rcx
+		div dword [rdi]
+		mov sil, [rdi + rdx + 4]
+		mov byte [num + rcx + 32], sil
+		dec rcx
 		cmp eax, 0
 		jne .Repeat
 
-		mov rax, 0x01
-		mov rdi, 1
-		mov rdx, 1
-.Cycle:
-		mov rsi, rsp
-		push rcx
-		syscall
-		pop rcx
-		pop rsi
-		loop .Cycle
-
+		neg rcx
+		mov rdx, rcx
+		mov rsi, num + 33
+		sub rsi, rcx
+		call Print_str
 		jmp ..@Handler
 
 
