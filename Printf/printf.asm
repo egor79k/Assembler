@@ -1,10 +1,5 @@
 ;==================================================
 ; Function printf()
-; >Parametrs:
-;	-Format string
-;	-Arguments
-; >Returns:
-;	-
 ;==================================================
 global printf
 
@@ -13,26 +8,29 @@ section		.data
 prcnt 		db '%'
 Stk_offset	equ 8
 
-;:::Number systems buffers:::
+;:::Number systems:::;
 ASCII_nums	db "0123456789ABCDEF"
-Bin 		dd 1
-		dd 0x00000001
+
+Bin 		dd 1				;Bits num in one digit for this system
+		dd 0x00000001			;Mask for last digit
+
 Oct 		dd 3
 		dd 0x00000007
+
 Hex		dd 4
 		dd 0x0000000F
-Decim 		equ 10
+
+Decim 		equ 10				;Divider for decimal numbers
 		
-;:::Errors:::
+;:::Errors:::;
 Error_1		db 10, "Error: Invalid specificator!", 10
 Er1_len		equ $ - Error_1
 
 
 
 section .bss
-num_start	resb 32				;Buffer for %d parser
-num_end:
-
+num_start	resb 32				;Buffer for numbers print
+num_end:					;It's tail
 
 
 section		.text
@@ -45,7 +43,7 @@ printf:
 		dec rbx
 ..@Handler:					;Return-point for markers parser
 		inc rbx				;Skip marker id (letter after %)
-		mov r8, rbx
+		mov r8, rbx			;Save whole string part between markers
 .Repeat:	
 		cmp byte [rbx], '%'		;Check for marker
 		je Marker
@@ -65,7 +63,7 @@ printf:
 ; Switch types of markers
 ;==================================================
 Marker:
-		call Print_fromto		;Print last piece of format string before '%'
+		call Print_fromto		;Print last part of format string before '%'
 		inc rbx
 
 		cmp byte [rbx], 'd'		;Determine type of marker
@@ -94,7 +92,7 @@ Marker:
 
 ;==================================================
 ; Print decimal number
-; Destr: 
+; Destr: EAX RCX EDX RSI RDI R9
 ;==================================================
 Decimal:	
 		mov edi, Decim			;Move decimal divider to EDI
@@ -121,7 +119,7 @@ Decimal:
 		mov byte [num_end + rcx], '-'
 		dec rcx
 .Positive:
-		neg rcx				; Printing buffer in usual oreder (left->right)
+		neg rcx				; Printing buffer in usual oreder
 		mov rdx, rcx
 		mov rsi, num_end + 1
 		sub rsi, rcx
@@ -134,7 +132,7 @@ Decimal:
 ;==================================================
 Hexadecimal:
 		mov rdi, Hex
-		jmp Number
+		jmp TPS_Num
 
 
 ;==================================================
@@ -142,7 +140,7 @@ Hexadecimal:
 ;==================================================
 Octal:
 		mov rdi, Oct
-		jmp Number
+		jmp TPS_Num
 
 
 ;==================================================
@@ -150,7 +148,7 @@ Octal:
 ;==================================================
 Binary:
 		mov rdi, Bin
-		jmp Number
+		jmp TPS_Num
 
 
 ;==================================================
@@ -190,18 +188,18 @@ Percent:
 
 
 ;==================================================
-; Print 4 byte number in different number systems
+; Print 4 byte number in two-powered number systems (TPS)
 ; Entry: RDI - NS buffer in format: dd <radix> db "1...<radix-1>"
 ; Destr: RAX RCX RDX RSI
 ;==================================================
-Number:
+TPS_Num:					;"Two-powered system number"
 		mov eax, [rbp]			;Put number into EAX
 		add rbp, Stk_offset
 		xor r9, r9
 .Repeat:	
-		mov edx, eax
+		mov edx, eax			;Get the smallest digit into EDX
 		and edx, [rdi + 4]
-		xor rcx, rcx
+		xor rcx, rcx			;Shift number on one digit right
 		mov ecx, [rdi]
 		.lp: shr eax, 1
 		loop .lp

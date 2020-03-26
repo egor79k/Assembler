@@ -1,3 +1,6 @@
+;==================================================
+; Testing program for printf function
+;==================================================
 global _start
 extern printf
 
@@ -47,7 +50,13 @@ Arg_7_6		dd 256
 Arg_7_7		dd 0xFFFFFFFF
 
 Format_str_8	db "%%%%%%%%%s%%%%%%%%", 10, 0
-Arg_8_1		db "MAIN_MENU"
+Arg_8_1		db "MAIN_MENU", 0
+
+Format_str_9	db "Testing neg and pos nums:%c%d%c%d%c%d%c%d%c", 0
+Arg_9_1		dd 256
+Arg_9_2		dd -2000000001
+Arg_9_3		dd 1
+Arg_9_4		dd -1555
 
 
 section 	.text
@@ -126,6 +135,19 @@ _start:
 		push Format_str_8
 		call printf
 		add rsp, Stk_offset
+
+		push qword [NewLine]
+		push qword [Arg_9_4]
+		push qword [NewLine]
+		push qword [Arg_9_3]
+		push qword [NewLine]
+		push qword [Arg_9_2]
+		push qword [NewLine]
+		push qword [Arg_9_1]
+		push qword [NewLine]
+		push Format_str_9
+		call printf
+		add rsp, Stk_offset * 9
 
 		mov rax, 0x3C
 		xor rdi, rdi
