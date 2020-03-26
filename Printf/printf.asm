@@ -14,17 +14,14 @@ prcnt 		db '%'
 Stk_offset	equ 8
 
 ;:::Number systems buffers:::
-Bin 		dd 2
-		db "01"
-
-Oct 		dd 8
-		db "01234567"
-
-Decim 		dd 10
-		db "0123456789"
-
-Hex		dd 0x10
-		db "0123456789ABCDEF"
+ASCII_nums	db "0123456789ABCDEF"
+Bin 		dd 1
+		dd 0x00000001
+Oct 		dd 3
+		dd 0x00000007
+Hex		dd 4
+		dd 0x0000000F
+Decim 		equ 10
 		
 ;:::Errors:::
 Error_1		db 10, "Error: Invalid specificator!", 10
@@ -33,7 +30,8 @@ Er1_len		equ $ - Error_1
 
 
 section .bss
-num 		resb 32				;Buffer for %d parser
+num_start	resb 32				;Buffer for %d parser
+num_end:
 
 
 
@@ -96,10 +94,39 @@ Marker:
 
 ;==================================================
 ; Print decimal number
+; Destr: 
 ;==================================================
 Decimal:	
-		mov rdi, Decim
-		jmp Number
+		mov edi, Decim			;Move decimal divider to EDI
+		mov eax, [rbp]			;Put number into EAX
+		add rbp, Stk_offset
+		xor rcx, rcx 			;Reset buffer's counter
+		xor r9, r9 			;Reset negative flag
+
+		cmp eax, 0			;Check if num is negative
+		jge .Repeat
+		neg eax 			;Make it pos and turn neg flag on
+		mov r9, 1			;R9 - flag, num is: 0 - positive 1 - negative
+.Repeat:	
+		xor edx, edx
+		div edi				;Get the smallest digit in EDX
+		mov sil, [ASCII_nums + edx]
+		mov byte [num_end + rcx], sil	;Write number as a string in reversed buffer
+		dec rcx				;Reversed buffer's counter
+		cmp eax, 0			;Do while next digit != 0
+		jne .Repeat
+
+		cmp r9, 0			;If num is neg mov '-' in buff start
+		je .Positive
+		mov byte [num_end + rcx], '-'
+		dec rcx
+.Positive:
+		neg rcx				; Printing buffer in usual oreder (left->right)
+		mov rdx, rcx
+		mov rsi, num_end + 1
+		sub rsi, rcx
+		call Print_str
+		jmp ..@Handler
 
 
 ;==================================================
@@ -170,20 +197,24 @@ Percent:
 Number:
 		mov eax, [rbp]			;Put number into EAX
 		add rbp, Stk_offset
-		xor rcx, rcx
+		xor r9, r9
 .Repeat:	
-		xor rdx, rdx
-		div dword [rdi]			;Get the smallest digit in EDX
-		mov sil, [rdi + rdx + 4]
-		mov byte [num + rcx + 32], sil	;Write number as a string in reversed buffer
-		dec rcx				;Reversed buffer's counter
+		mov edx, eax
+		and edx, [rdi + 4]
+		xor rcx, rcx
+		mov ecx, [rdi]
+		.lp: shr eax, 1
+		loop .lp
+		mov sil, [ASCII_nums + edx]
+		mov byte [num_end + r9], sil	;Write number as a string in reversed buffer
+		dec r9				;Reversed buffer's counter
 		cmp eax, 0
 		jne .Repeat
 
-		neg rcx				; Printing buffer in usual oreder (left->right)
-		mov rdx, rcx
-		mov rsi, num + 33
-		sub rsi, rcx
+		neg r9				; Printing buffer in usual oreder (left->right)
+		mov rdx, r9
+		mov rsi, num_end + 1
+		sub rsi, r9
 		call Print_str
 		jmp ..@Handler
 

@@ -9,8 +9,8 @@ Format_str_1 	db "This is the great test string%c A[%d] %c %d | (%d)%c", 0
 Arg_1_1		db '!'
 Arg_1_2		dd 25
 Arg_1_3		db '='
-Arg_1_4		dd 1234567890
-Arg_1_5		dd 2
+Arg_1_4		dd -1234567890
+Arg_1_5		dd -2
 
 Format_str_2	db "%s%c %s number %d%c%c", 0
 Arg_2_1		db "The second test string", 0
@@ -45,6 +45,9 @@ Arg_7_4		dd 1024
 Arg_7_5		dd 0xA51BB
 Arg_7_6		dd 256
 Arg_7_7		dd 0xFFFFFFFF
+
+Format_str_8	db "%%%%%%%%%s%%%%%%%%", 10, 0
+Arg_8_1		db "MAIN_MENU"
 
 
 section 	.text
@@ -118,6 +121,11 @@ _start:
 		push Format_str_7
 		call printf
 		add rsp, Stk_offset * 13
+
+		push Arg_8_1
+		push Format_str_8
+		call printf
+		add rsp, Stk_offset
 
 		mov rax, 0x3C
 		xor rdi, rdi
