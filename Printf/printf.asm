@@ -7,6 +7,17 @@ section		.data
 
 prcnt 		db '%'
 Stk_offset	equ 8
+Markers_table 	db "dcsxob%"
+Markers_num 	equ 7
+Jmp_table:
+		dq Decimal
+		dq Char
+		dq String
+		dq Hexadecimal
+		dq Octal
+		dq Binary
+		dq Percent
+
 
 ;:::Number systems:::;
 ASCII_nums	db "0123456789ABCDEF"
@@ -33,7 +44,21 @@ num_start	resb 32				;Buffer for numbers print
 num_end:					;It's tail
 
 
+
 section		.text
+;==================================================
+; Print string in std output, located between R8 and RBX pointers
+; Entry: 1 arg  - String start
+;	 2 arg - String end
+; Destr: RAX RCX RDI
+;==================================================
+%macro Print_fromto 2
+		mov rsi, %1
+		mov rdx, %2
+		sub rdx, %1
+		call Print_str
+%endmacro
+
 
 printf:		
 		push rbp			;Saving old RBP
@@ -52,7 +77,7 @@ printf:
 		inc rbx
 		jmp .Repeat
 .End_str:
-		call Print_fromto		;Print last piece of format string before '/0'
+		Print_fromto r8, rbx		;Print last piece of format string before '/0'
 
 		pop rbp
 		mov rax, 0
@@ -63,24 +88,21 @@ printf:
 ; Switch types of markers
 ;==================================================
 Marker:
-		call Print_fromto		;Print last part of format string before '%'
+		Print_fromto r8, rbx		;Print last part of format string before '%'
 		inc rbx
 
-		cmp byte [rbx], 'd'		;Determine type of marker
-		je Decimal
-		cmp byte [rbx], 'c'
-		je Char
-		cmp byte [rbx], 's'
-		je String
-		cmp byte [rbx], 'x'
-		je Hexadecimal
-		cmp byte [rbx], 'o'
-		je Octal
-		cmp byte [rbx], 'b'
-		je Binary
-		cmp byte [rbx], '%'
-		je Percent
+		mov al, byte [rbx]		;Determine type of marker
+		mov rdi, Markers_table
+		mov rcx, Markers_num
+		repne scasb
+		jne .Error
 
+		sub rdi, Markers_table		;Jmp to corresponding label
+		dec rdi
+		shl rdi, 3
+		add rdi, Jmp_table
+		jmp [rdi]
+.Error:
 		mov rsi, Error_1		;Undefined marker id
 		mov rdx, Er1_len
 		call Print_str
@@ -227,20 +249,6 @@ Print_str:
 		mov rax, 0x01
 		mov rdi, 1
 		syscall
-		ret
-
-
-;==================================================
-; Print string in std output, located between R8 and RBX pointers
-; Entry: R8  - String start
-;	 RBX - String end
-; Destr: RAX RCX RDI
-;==================================================
-Print_fromto:
-		mov rsi, r8
-		mov rdx, rbx
-		sub rdx, r8
-		call Print_str
 		ret
 
 

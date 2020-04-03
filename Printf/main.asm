@@ -13,7 +13,7 @@ Arg_1_1		db '!'
 Arg_1_2		dd 25
 Arg_1_3		db '='
 Arg_1_4		dd -1234567890
-Arg_1_5		dd -2
+Arg_1_5		dd 2
 
 Format_str_2	db "%s%c %s number %d%c%c", 0
 Arg_2_1		db "The second test string", 0
