@@ -59,16 +59,34 @@ section		.text
 		call Print_str
 %endmacro
 
+%macro Return 1
+		add rsp, Stk_offset * 6
+		pop rbp
+		mov rax, %1
+		ret
+%endmacro
+
 
 printf:		
-		push rbp			;Saving old RBP
+		push rbp			;Save old RBP
+		push r9				;Push first 6 args from registers on stack
+		push r8
+		push rcx
+		push rdx
+		push rsi
+		push rdi
+
 		mov rbp, rsp 			;Mov stack pointer to RBP
-		mov rbx, [rbp + 2 * Stk_offset]	;Take first arg from stack
-		add rbp, Stk_offset * 3		;Mov stack pointer to next arg
+		mov rbx, [rbp]			;Take first arg from stack
+		add rbp, Stk_offset		;Mov stack pointer to next arg
+		xor r10, r10			;Use R10 as args counter
 		dec rbx
 ..@Handler:					;Return-point for markers parser
 		inc rbx				;Skip marker id (letter after %)
 		mov r8, rbx			;Save whole string part between markers
+		cmp r10, 5
+		jne .Repeat
+		add rbp, Stk_offset * 2
 .Repeat:	
 		cmp byte [rbx], '%'		;Check for marker
 		je Marker
@@ -78,10 +96,8 @@ printf:
 		jmp .Repeat
 .End_str:
 		Print_fromto r8, rbx		;Print last piece of format string before '/0'
-
-		pop rbp
-		mov rax, 0
-		ret 				;return 0;
+		
+		Return 0			;return 0;
 
 
 ;==================================================
@@ -106,10 +122,8 @@ Marker:
 		mov rsi, Error_1		;Undefined marker id
 		mov rdx, Er1_len
 		call Print_str
-
-		pop rbp
-		mov rax, 1
-		ret 				;return 1;
+		
+		Return 1			;return 1;
 
 
 ;==================================================
@@ -120,6 +134,7 @@ Decimal:
 		mov edi, Decim			;Move decimal divider to EDI
 		mov eax, [rbp]			;Put number into EAX
 		add rbp, Stk_offset
+		inc r10				;inc arg counter
 		xor rcx, rcx 			;Reset buffer's counter
 		xor r9, r9 			;Reset negative flag
 
@@ -179,6 +194,7 @@ Binary:
 Char:
 		mov rsi, rbp
 		add rbp, Stk_offset
+		inc r10
 		call Putchar
 		jmp ..@Handler
 
@@ -189,6 +205,7 @@ Char:
 String:
 		mov rsi, [rbp]			;Get string addr from stack
 		add rbp, Stk_offset
+		inc r10
 		xor rdx, rdx
 		dec rdx
 .Repeat:
@@ -217,6 +234,7 @@ Percent:
 TPS_Num:					;"Two-powered system number"
 		mov eax, [rbp]			;Put number into EAX
 		add rbp, Stk_offset
+		inc r10
 		xor r9, r9
 .Repeat:	
 		mov edx, eax			;Get the smallest digit into EDX

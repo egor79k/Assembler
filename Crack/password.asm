@@ -13,57 +13,88 @@ right_pswd_len	equ $ - right_pswd
 wrong_pswd	db 10, "Access denied!", 10
 wrong_pswd_len 	equ $ - wrong_pswd
 
+hash_seed 	equ $
+
 
 section .bss
 buffer		resb 20
-buffer_len	equ $ - buffer
 
 
 section .text
+%macro Print_str 2	
+		mov rax, 0x01
+		mov rdi, 1
+		mov rsi, %1
+		mov rdx, %2
+		syscall
+%endmacro
+
+
 _start:
-		mov rsi, instruction
-		mov rdx, instruction_len
-		call Print_str
-		xor rbx, rbx
-.Repeat:
+		Print_str instruction, instruction_len
+		mov rsi, buffer
+.loop:
 		mov rax, 0x00
 		mov rdi, 1
-		mov rsi, buffer + rbx
 		mov rdx, 1
 		syscall
-		cmp buffer[rbx], 13
-		je Stop
-		inc rbx
-		cmp rbx, buffer_len
-		jbe .Repeat
+		inc rsi
+		cmp byte [rsi - 1], 10
+		jne .loop
 Stop:
-		cmp rbx, pswd_len
+		sub rsi, buffer + 1		;Check pswd length
+		cmp rsi, pswd_len
 		jne Wrong
-		mov rcx, rbx
-		mov rsi, offset buffer
-		mov rdi, offset password
+
+		mov rcx, pswd_len			;Check pswd hash
+		mov rsi, buffer
+		call Count_hash
+		mov rbx, rdx
+		mov rsi, password
+		mov rcx, pswd_len
+		call Count_hash;
+		cmp rdx, rbx
+		jne Wrong
+
+		mov rcx, pswd_len 		;Check pswd's symbols
+		mov rsi, buffer
+		mov rdi, password
 		repe cmpsb
 		jne Wrong
 		je Right
-		ret
+		jmp End
 
 Right:
-		mov rsi, right_pswd
-		mov rdx, right_pswd_len
-		call Print_str
-		ret
+		Print_str right_pswd, right_pswd_len
+		jmp End
 
 Wrong:
-		mov rsi, wrong_pswd
-		mov rdx, wrong_pswd_len
-		call Print_str
-		ret
+		Print_str wrong_pswd, wrong_pswd_len
+		jmp End
 
-
-Print_str:	
-		mov rax, 0x01
-		mov rdi, 1
+End:
+		mov rax, 0x3C
+		xor rdi, rdi
 		syscall
 		ret
 
-end 		_start
+
+;===================================================
+; Count hash of string
+; Entry: RSI - string addr
+;	 RCX - string len
+; Exit:  RDX - hash 
+; Destr: RAX RCX RSI
+;===================================================
+Count_hash:
+		mov rdx, hash_seed
+.Repeat:
+		mov rax, rdx
+		shl rdx, 5
+		add rdx, rax
+		xor rax, rax
+		mov al, byte [rsi]
+		xor rdx, rax
+		inc rsi
+		loop .Repeat
+		ret
