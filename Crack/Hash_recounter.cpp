@@ -9,6 +9,7 @@ int main ()
 	const char middle_symbols [] = "000";			//Empty place filler 3 symbols
 	const int start_pswd_seed_len = 9;
 	const int middl_pswd_seed_len = 7;
+	const int hash_xor_val = 0x72816354;
 
 	char new_hash_str[30] = {};
 	strcpy (new_hash_str, start_pswd_seed);
@@ -24,7 +25,7 @@ int main ()
 
 	for (i = 0; i < old_hash_str_len; ++i)
 	{
-		rbx = rbx xor 0x72816354;
+		rbx = rbx xor hash_xor_val;
 		rbx += old_hash_str[i];
 	}
 	
@@ -36,14 +37,14 @@ int main ()
 
 	for (i = 0; i < start_pswd_seed_len; ++i)		//Start hash counting...
 	{
-		rbx = rbx xor 0x72816354;
+		rbx = rbx xor hash_xor_val;
 		rbx += new_hash_str[i];
 	}
 
 	printf("Start pswd with %s and hash %x\n", start_pswd_seed, rbx);
 
 
-	rbx = rbx xor 0x72816354;
+	rbx = rbx xor hash_xor_val;
 	int new_hash = rbx;
 
 	for (int symb = 0; symb < 128; ++symb)			//Selecting symbol
@@ -53,7 +54,7 @@ int main ()
 
 		for (i = 0; i < middl_pswd_seed_len; ++i)	//Check if hash is appropriate
 		{
-			rbx = rbx xor 0x72816354;
+			rbx = rbx xor hash_xor_val;
 			rbx += middl_pswd_seed[i];
 		}
 
@@ -62,7 +63,7 @@ int main ()
 	}
 	printf("Last symb must be: %x = '%c'\n", result, result);
 
-	printf("\nGenerating new password...\n");
+	printf("\n\x1b[32;1mGenerating new password...\n");
 	for (i = 0; i <= 100; i += 5)					//Progress bar
 	{
 		printf("%s%2d%%", u8"\U00002588", i);
@@ -71,8 +72,9 @@ int main ()
 		printf("\b\b\b");
 	}
 
+
 	new_hash_str[9] = result;
 	new_hash_str[29] = result;
-	printf("\n\nYour new password: %s\n", new_hash_str);
+	printf("\n\nYour new password: \x1b[0m%s\n\n", new_hash_str);
 	return 0;
 }

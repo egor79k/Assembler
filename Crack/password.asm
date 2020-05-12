@@ -1,6 +1,8 @@
 global _start
 
 section .data
+buffer		resb 20
+
 password	db "password"
 pswd_len	equ $ - password
 
@@ -16,9 +18,6 @@ wrong_pswd_len 	equ $ - wrong_pswd
 hash_seed 	equ $
 
 
-section .bss
-buffer		resb 20
-
 
 section .text
 %macro Print_str 2	
@@ -32,6 +31,12 @@ section .text
 
 _start:
 		Print_str instruction, instruction_len
+		
+		mov rsi, password
+		mov rcx, pswd_len
+		call Count_hash
+		mov rbx, rdx
+
 		mov rsi, buffer
 .loop:
 		mov rax, 0x00
@@ -42,17 +47,10 @@ _start:
 		cmp byte [rsi - 1], 10
 		jne .loop
 Stop:
-		sub rsi, buffer + 1		;Check pswd length
-		cmp rsi, pswd_len
-		jne Wrong
 
-		mov rcx, pswd_len			;Check pswd hash
-		mov rsi, buffer
+		mov rsi, buffer 		;Check pswd hash
+		mov rcx, pswd_len		
 		call Count_hash
-		mov rbx, rdx
-		mov rsi, password
-		mov rcx, pswd_len
-		call Count_hash;
 		cmp rdx, rbx
 		jne Wrong
 
