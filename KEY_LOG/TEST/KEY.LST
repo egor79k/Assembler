@@ -1,0 +1,164 @@
+Turbo Assembler	 Version 4.1	    03/01/20 18:17:43	    Page 1
+key.asm
+
+
+
+      1	0000			     .model tiny
+      2
+      3	0000			     .data
+      4				     ;Key reading:::::::::::::::::::::::::::::::
+      5	      =0022		     X		     equ 34d
+      6	      =0010		     Y		     equ 16d
+      7	      =002F		     COLOR	     equ 2Fh
+      8	      =0029		     EXIT_KEY	     equ 41d
+      9	      =0030		     ASCII_OFFSET    equ 48d
+     10
+     11	0000  6C 6F 67 2E 74 78	74+  file_name	     db	"log.txt", 0
+     12	      00
+     13	0008  00		     Symb	     db	0
+     14	0009  46 69 6C 65 20 65	72+  Err1	     db	"File error!$"
+     15	      72 6F 72 21 24
+     16	0015  00		     count	     db	0
+     17
+     18	0016			     .code
+     19				     org 100h
+     20
+     21	0100  33 C0		     Start:	     xor ax, ax
+     22	0102  8E C0				     mov es, ax			     ;Zeroing es
+     23
+     24	0104  FA				     cli			     ;Disable hardware interrupts
+     25	0105  BB 0024				     mov bx, 36d		     ; es:[bx] -> int 09h in ISR Table
+     26
+     27	0108  26: 8B 07				     mov ax, word ptr es:[bx]
+     28	010B  A3 0183r				     mov Old09,	ax
+     29	010E  26: 8B 47	02			     mov ax, word ptr es:[bx+2]
+     30	0112  A3 0185r				     mov Old09+2, ax		     ;Saving old value
+     31
+     32	0115  26: C7 07	0133r			     mov word ptr es:[bx], offset Handler
+     33	011A  8C C8				     mov ax, cs
+     34	011C  26: 89 47	02			     mov word ptr es:[bx + 2], ax    ;Putting new value
+     35	0120  FB				     sti			     ;Enable hardware interrupts
+     36
+     37	0121  B8 3100				     mov ax, 3100h
+     38	0124  BA 0190r				     mov dx, offset EndLabel
+     39	0127  D1 EA D1 EA D1 EA	D1+		     shr dx, 4
+     40	      EA
+     41	012F  42				     inc dx
+     42	0130  CD 21				     int 21h			     ;Terminate	& Stay resident
+     43	0132  C3				     ret
+     44
+     45
+     46				     ;========================================================
+     47				     ; Takes keyboard scan codes
+     48				     ;========================================================
+     49
+     50	0133			     Handler	     proc
+     51	0133  50 53 51 52 57 06			     push ax bx	cx dx di es  ;Save current register's values
+     52
+     53	0139  B8 B800				     mov ax, 0B800h	     ;Pushing video segment addr
+     54	013C  8E C0				     mov es, ax
+     55
+     56	013E  33 C0				     xor ax, ax
+     57	0140  E4 60				     in	al, 60h		     ;Taking scan code of pushed key
+Turbo Assembler	 Version 4.1	    03/01/20 18:17:43	    Page 2
+key.asm
+
+
+
+     58						     ;cmp al, EXIT_KEY
+     59						     ;je Stop
+     60	0142  0C 80				     or	al, 128d	     ;Equaling key's push and release SC-s
+     61	0144  2C 80				     sub al, 128d
+     62
+     63	0146  B9 000A				     mov cx, 10d
+     64	0149  33 D2				     xor dx, dx
+     65	014B  F7 F1				     div cx		     ;Taking tens and units of scan code
+     66	014D  04 30				     add al, ASCII_OFFSET
+     67	014F  BF 0522				     mov di, Y * 80d + X
+     68	0152  D1 E7				     shl di, 1		     ;Counting an addr in video	memory
+     69	0154  B4 2F				     mov ah, COLOR
+     70	0156  AB				     stosw		     ;Printint tens
+     71	0157  8A C2				     mov al, dl
+     72	0159  04 30				     add al, ASCII_OFFSET
+     73	015B  A2 0008r				     mov [Symb], al
+     74	015E  AB				     stosw		     ;Printing units
+     75
+     76
+     77	015F  B4 3D				     mov ah, 3Dh
+     78	0161  B0 01				     mov al, 1
+     79	0163  BA 0000r				     mov dx, offset file_name
+     80	0166  CD 21				     int 21h
+     81	0168  72 1E				     jc	Error
+     82	016A  8B D8				     mov bx, ax
+     83
+     84	016C  B4 40				     mov ah, 40h
+     85	016E  B9 0001				     mov cx, 1d
+     86	0171  BA 0008r				     mov dx, offset Symb
+     87	0174  CD 21				     int 21h
+     88
+     89	0176  B4 42				     mov ah, 42h
+     90	0178  B0 01				     mov al, 1d
+     91	017A  CD 21				     int 21h
+     92
+     93	017C  07 5F 5A 59 5B 58			     pop es di dx cx bx	ax   ;Recover old register's values
+     94
+     95	0182  EA				     db	0EAh		     ;Jmp
+     96	0183  0000		     Old09	     dw	0
+     97	0185  0000				     dw	0
+     98
+     99	0187  CF				     iret
+    100
+    101	0188					     endp
+    102
+    103	0188  B4 09		     Error:	     mov ah, 09h
+    104	018A  BA 0009r				     mov dx, offset Err1
+    105	018D  CD 21				     int 21h
+    106	018F  C3				     ret
+    107
+    108	0190			     EndLabel:
+    109				     end	     Start
+Turbo Assembler	 Version 4.1	    03/01/20 18:17:43	    Page 3
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "03/01/20"
+??FILENAME			  Text	 "key	  "
+??TIME				  Text	 "18:17:43"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0101H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 KEY
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+ASCII_OFFSET			  Number 0030
+COLOR				  Number 002F
+COUNT				  Byte	 DGROUP:0015
+ENDLABEL			  Near	 DGROUP:0190
+ERR1				  Byte	 DGROUP:0009
+ERROR				  Near	 DGROUP:0188
+EXIT_KEY			  Number 0029
+FILE_NAME			  Byte	 DGROUP:0000
+HANDLER				  Near	 DGROUP:0133
+OLD09				  Word	 DGROUP:0183
+START				  Near	 DGROUP:0100
+SYMB				  Byte	 DGROUP:0008
+X				  Number 0022
+Y				  Number 0010
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0016 Word	  Public  DATA
+  _TEXT				  16  0190 Word	  Public  CODE
+
