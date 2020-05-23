@@ -103,6 +103,7 @@ Start:
 WindowString	proc
 		push 0B800h
 		pop es
+		cld
 		stosw
 		mov al, dh
 		rep stosw
