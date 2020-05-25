@@ -1,0 +1,120 @@
+Turbo Assembler	 Version 4.1	    03/03/20 14:57:03	    Page 1
+file.asm
+
+
+
+      1	0000			     .model tiny
+      2				     .186
+      3	0000			     .data
+      4	0000  0001		     Count   dw	1
+      5	0002  32		     Buf	     db	50d
+      6	0003  6C 6F 67 2E 74 78	74+  File_Name	     db	"log.txt", 0
+      7	      00
+      8	000B  0001		     Tester  dw	1
+      9
+     10	000D			     .code
+     11				     org 100h
+     12
+     13	0100			     Start:
+     14
+     15	0100  00000000		     Old28h	     dd	     0
+     16
+     17	0104  B8 3528				     mov     ax, 3528h				     ;Getting 28h interrupt pointer
+     18	0107  CD 21				     int     21h
+     19	0109  89 1E 0100r			     mov     word ptr Old28h, bx	     ;Saving old 28h interrupt addr
+     20	010D  8C 06 0102r			     mov     word ptr Old28h+2,	es
+     21	0111  B8 2528				     mov     ax, 2528h
+     22	0114  BA 012Er				     mov     dx, offset	New28h
+     23	0117  CD 21				     int     21h					     ;Pushing new 28h	    +
+     24				     interrupt function
+     25
+     26	0119  B8 3100				     mov ax, 3100h
+     27	011C  BA 0160r				     mov dx, offset EndLabel
+     28	011F  C1 EA 04				     shr dx, 4
+     29	0122  42				     inc dx
+     30	0123  CD 21				     int 21h					     ;Terminate	& Stay resident
+     31
+     32	0125  C3				     ret
+     33
+     34	0126			     File_err:
+     35	0126  B4 09				     mov ah, 09h
+     36	0128  BA 0126r				     mov dx, offset File_err
+     37	012B  CD 21				     int 21h
+     38	012D  C3				     ret
+     39
+     40	012E			     New28h  proc
+     41	012E  60				     pusha
+     42	012F  06 1E				     push es ds
+     43
+     44	0131  83 3E 000Br 00			     cmp [Tester], 0
+     45	0136  74 24				     je	Out28h
+     46
+     47	0138  B4 3D				     mov     ah, 3dh		     ;Opening file
+     48	013A  B0 01				     mov     al, 1
+     49	013C  BA 0003r				     mov     dx, offset	File_Name
+     50	013F  CD 21				     int     21h
+     51	0141  72 E3				     jc	File_err
+     52
+     53	0143  8B D8				     mov     bx, ax
+     54	0145  B4 40				     mov     ah, 40h		     ;Writing buffer into file
+     55	0147  8B 0E 0000r			     mov     cx, Count
+     56	014B  BA 0002r				     mov     dx, offset	Buf
+     57	014E  CD 21				     int     21h
+Turbo Assembler	 Version 4.1	    03/03/20 14:57:03	    Page 2
+file.asm
+
+
+
+     58
+     59	0150  B8 003E				     mov     ax, 3eh		     ;Closing file
+     60	0153  CD 21				     int     21h
+     61
+     62	0155  2E: C7 06	000Br 0000		     mov cs:[Tester], 0
+     63	015C			     Out28h:
+     64	015C  1F 07				     pop ds es
+     65	015E  61				     popa
+     66	015F  CF				     iret
+     67	0160					     endp
+     68	0160			     EndLabel:
+     69				     end     Start
+Turbo Assembler	 Version 4.1	    03/03/20 14:57:03	    Page 3
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "03/03/20"
+??FILENAME			  Text	 "file	  "
+??TIME				  Text	 "14:57:02"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0103H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 FILE
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+BUF				  Byte	 DGROUP:0002
+COUNT				  Word	 DGROUP:0000
+ENDLABEL			  Near	 DGROUP:0160
+FILE_ERR			  Near	 DGROUP:0126
+FILE_NAME			  Byte	 DGROUP:0003
+NEW28H				  Near	 DGROUP:012E
+OLD28H				  Dword	 DGROUP:0100
+OUT28H				  Near	 DGROUP:015C
+START				  Near	 DGROUP:0100
+TESTER				  Word	 DGROUP:000B
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  000D Word	  Public  DATA
+  _TEXT				  16  0160 Word	  Public  CODE
+

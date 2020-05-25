@@ -1,0 +1,135 @@
+Turbo Assembler	 Version 4.1	    03/21/20 15:20:58	    Page 1
+keyboard.asm
+
+
+
+      1	0000			     .model tiny
+      2
+      3	0000			     .data
+      4				     ;Key reading:::::::::::::::::::::::::::::::
+      5	      =0022		     X		     equ 34d
+      6	      =0010		     Y		     equ 16d
+      7	      =002F		     COLOR	     equ 2Fh
+      8	      =0029		     EXIT_KEY	     equ 41d
+      9	      =0030		     ASCII_OFFSET    equ 48d
+     10
+     11	0000			     .code
+     12				     org 100h
+     13
+     14	0100  33 C0		     Start:	     xor ax, ax
+     15	0102  8E C0				     mov es, ax			     ;Zeroing es
+     16
+     17	0104  FA				     cli			     ;Disable hardware interrupts
+     18	0105  BB 0024				     mov bx, 36d		     ; es:[bx] -> int 09h in ISR Table
+     19
+     20	0108  26: 8B 07				     mov ax, word ptr es:[bx]
+     21	010B  A3 0169r				     mov Old09,	ax
+     22	010E  26: 8B 47	02			     mov ax, word ptr es:[bx+2]
+     23	0112  A3 016Br				     mov Old09+2, ax		     ;Saving old value
+     24
+     25	0115  26: C7 07	0133r			     mov word ptr es:[bx], offset Handler
+     26	011A  8C C8				     mov ax, cs
+     27	011C  26: 89 47	02			     mov word ptr es:[bx + 2], ax    ;Putting new value
+     28	0120  FB				     sti			     ;Enable hardware interrupts
+     29	0121			     Stop1:
+     30	0121  B8 3100				     mov ax, 3100h
+     31	0124  BA 0170r				     mov dx, offset EndLabel
+     32	0127  D1 EA D1 EA D1 EA	D1+		     shr dx, 4
+     33	      EA
+     34	012F  42				     inc dx
+     35	0130  CD 21				     int 21h			     ;Terminate	& Stay resident
+     36	0132  C3				     ret
+     37
+     38
+     39				     ;========================================================
+     40				     ; Takes keyboard scan codes
+     41				     ;========================================================
+     42
+     43	0133			     Handler	     proc
+     44	0133  50 53 51 52 57 06			     push ax bx	cx dx di es  ;Save current register's values
+     45
+     46	0139  B8 B800				     mov ax, 0B800h	     ;Pushing video segment addr
+     47	013C  8E C0				     mov es, ax
+     48
+     49	013E  33 C0				     xor ax, ax
+     50	0140  E4 60				     in	al, 60h		     ;Taking scan code of pushed key
+     51	0142  3C 29				     cmp al, EXIT_KEY
+     52	0144  74 1A				     je	Stop
+     53	0146  0C 80				     or	al, 128d	     ;Equaling key's push and release SC-s
+     54	0148  2C 80				     sub al, 128d
+     55
+     56	014A  B9 000A				     mov cx, 10d
+     57	014D  33 D2				     xor dx, dx
+Turbo Assembler	 Version 4.1	    03/21/20 15:20:58	    Page 2
+keyboard.asm
+
+
+
+     58	014F  F7 F1				     div cx		     ;Taking tens and units of scan code
+     59	0151  04 30				     add al, ASCII_OFFSET
+     60	0153  BF 0522				     mov di, Y * 80d + X
+     61	0156  D1 E7				     shl di, 1		     ;Counting an addr in video	memory
+     62	0158  B4 2F				     mov ah, COLOR
+     63	015A  AB				     stosw		     ;Printint tens
+     64	015B  8A C2				     mov al, dl
+     65	015D  04 30				     add al, ASCII_OFFSET
+     66	015F  AB				     stosw		     ;Printing units
+     67
+     68	0160			     Stop:
+     69	0160  3C 29				     cmp al, EXIT_KEY
+     70	0162  07 5F 5A 59 5B 58			     pop es di dx cx bx	ax   ;Recover old register's values
+     71
+     72	0168  EA				     db	0EAh		     ;Jmp
+     73	0169  0000		     Old09	     dw	0
+     74	016B  0000				     dw	0
+     75
+     76	016D  74 B2				     je	Stop1
+     77
+     78	016F  CF				     iret
+     79
+     80	0170					     endp
+     81
+     82	0170			     EndLabel:
+     83				     end	     Start
+Turbo Assembler	 Version 4.1	    03/21/20 15:20:58	    Page 3
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "03/21/20"
+??FILENAME			  Text	 "keyboard"
+??TIME				  Text	 "15:20:58"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0101H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 KEYBOARD
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+ASCII_OFFSET			  Number 0030
+COLOR				  Number 002F
+ENDLABEL			  Near	 DGROUP:0170
+EXIT_KEY			  Number 0029
+HANDLER				  Near	 DGROUP:0133
+OLD09				  Word	 DGROUP:0169
+START				  Near	 DGROUP:0100
+STOP				  Near	 DGROUP:0160
+STOP1				  Near	 DGROUP:0121
+X				  Number 0022
+Y				  Number 0010
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+  _TEXT				  16  0170 Word	  Public  CODE
+

